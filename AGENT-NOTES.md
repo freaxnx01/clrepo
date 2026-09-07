@@ -20,6 +20,10 @@ just test
 # Go tests with per-test streaming output (no shim tests)
 just test-verbose
 
+# Fast unit tests only — skips cmd/bridge (execs a built binary per test,
+# ~150s) and e2e/. Use during the edit loop; `just test` before pushing.
+just test-fast
+
 # Run a single test (raw go; no just recipe for this)
 go test ./cmd/bridge -run TestXxx
 
