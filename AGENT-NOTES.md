@@ -39,6 +39,35 @@ Cross-compile for Windows:
 GOOS=windows GOARCH=amd64 go build ./cmd/bridge
 ```
 
+## Web assets (`web/` → `internal/web/dist`)
+
+The Svelte UI is built by Vite into `internal/web/dist` and embedded with
+`go:embed`. CI never touches Node — `.github/workflows/` has no `setup-node`
+step, so it compiles against the committed `dist/placeholder`. Node is only a
+local `just sync-build` concern; Vite 7 requires **Node `^20.19` or `>=22.12`**.
+
+Two gotchas that cost real time:
+
+- **`npm install` crashes on npm 10** with `Cannot read properties of null
+  (reading 'edgesOut')` whenever the dependency majors move. It is an arborist
+  bug in `#loadPeerSet`, triggered by `@testing-library/svelte`'s open-ended
+  `vitest: '*'` peer pulling in the newest vitest's optional peer set. Do **not**
+  reach for `--force` / `--legacy-peer-deps`. Regenerate the lockfile with
+  `npx --yes npm@11 install`, then verify with the local `npm ci` — `npm ci`
+  skips ideal-tree building, so it is unaffected, and the `lockfileVersion: 3`
+  file npm 11 writes is what npm 10 reads.
+
+- **`resolve.conditions` must never be `[]`.** Vite 7 reads an empty array
+  literally as "no conditions", which resolves Svelte to its **SSR** build and
+  drags `node:async_hooks` into the browser bundle. Spread Vite's own
+  `defaultClientConditions` instead — and spread it into a fresh array, because
+  `@sveltejs/vite-plugin-svelte` pushes onto whatever you pass and the exported
+  one is frozen.
+
+`vite build` does not empty `internal/web/dist` (the outDir sits outside the
+Vite root), so hashed bundles from earlier builds accumulate there and every one
+of them gets embedded. Clear `internal/web/dist/assets/` if the binary looks fat.
+
 ## Cross-shell parity (bash + PowerShell) — hard requirement
 
 bridge must work end-to-end under both **bash** (Linux/macOS) and
