@@ -36,6 +36,11 @@ test:
 test-verbose:
     go test -v ./...
 
+# Run fast unit tests only — skips cmd/bridge (which execs a built binary per
+# test, ~150s) and e2e/.
+test-fast:
+    go test $(go list ./... | grep -vE '/cmd/bridge$|/e2e$')
+
 # Install the Go toolchain version declared in go.mod into ~/.local/go.
 install-go-toolchain:
     #!/usr/bin/env bash
